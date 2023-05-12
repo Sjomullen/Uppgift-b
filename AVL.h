@@ -16,25 +16,26 @@ private:
 		Node *left;
 		Node *right;
 		int height;
-		Node() {};
-		~Node() {};
+		Node(T element);
+		~Node();
 	};
 	Node *root;
 	void ToGraphvizHelper(std::string& listOfNodes, std::string& listOfConnections, Node* toWorkWith, size_t& uniqueID);
-    Node* insertNode(Node* node, T element);
-	Node* leftRotate(Node* node);
-	Node* rightRotate(Node* node);
-    int height(Node* node);
-    int getBalance(Node* node);
-	int max(int a, int b);
-	Node* removeHelper(Node* node, T element);
+
 
 
 public:
 	AVL();
 	~AVL();
 	void insert(T element);
+	Node* insertNode(Node* node, T element);
+	Node* leftRotate(Node* node);
+	Node* rightRotate(Node* node);
+    int height(Node* node);
+    int getBalance(Node* node);
+	Node* removeHelper(Node* node, T element);
 	void remove(T element);
+	int max(int a, int b);
 	bool find(T element);
 	std::vector<T> inOrderWalk();
 	std::vector<T> preOrderWalk();
@@ -59,6 +60,21 @@ AVL<T>::~AVL()
 }
 
 template <class T>
+AVL<T>::Node::Node(T element)
+{
+	this->element = element;
+		this->left = nullptr;
+		this->right = nullptr;
+		this->height = 0;
+}
+
+template <class T>
+AVL<T>::Node::~Node()
+{
+
+}
+
+template <class T>
 void AVL<T>::insert(T element)
 {
 	root = insertNode(root, element);
@@ -67,85 +83,66 @@ void AVL<T>::insert(T element)
 template<class T>
 typename AVL<T>::Node* AVL<T>::insertNode(Node* node, T element)
 {
-	//Trädet är tomt eller en lövnod har nåtts
-	if(node == nullptr)
-	{
-		return new Node*(element);
-	}
-
-	//Sätt in i rätt subtråd beroende på jämförelsen mellan elementet och noden
-	if(element < node->element)
-	{
-		node->left = insertNode(node->left, element);
-	}
-
-	else if(element > node->element)
-	{
-		node->right = insertNode(node->right, element);
-	}
-
-	else //elementet finns redan i trädet
-	{
-		return node;
-	}
-
-    //Uppdatera höjden på den här noden
-	node->height = 1 + max(height(node->left), height(node->right));
-
-	//Beräkna balansfakotrn för denna noden
-	int balance = getBalance(node);
-	
-	//Om noden har en balansfakor som inte är tillåten, balansera trädet
-	if(balance > 1 && element > node->left->element)
-	{
-		return rightRotate(node);
-	}
-
-	if(balance < -1 && element > node->right->element)
-	{
-		return leftRotate(node);
-	}
-
-	if(balance > 1 && element > node->left->right->element)
-	{
-		node->left = leftRotate(node->left);
-		return rightRotate(node);
-	}
-
-	if(balance < -1 && element < node->right->element)
-	{
-		node->right = rightRotate(node->right);
-		return leftRotate(node);
-	}
-
-	//Returnerar oförändrad nod
-	return node;
+//Trädet är tomt eller en lövnod har nåtts
+if(node == nullptr)
+{
+    return new Node(element);
 }
 
-template<class T>
-typename AVL<T>::Node* AVL<T>::leftRotate(Node* node)
+//Sätt in i rätt subtråd beroende på jämförelsen mellan elementet och noden
+if(element < node->element)
 {
-	//Child = Leaf
-	Node* rightchild = node->right;
-	Node* rightgrandchild = rightchild->right;
+    node->left = insertNode(node->left, element);
+}
 
-	//Roteringssteg
-	rightchild->left = node;
-	node->right = rightgrandchild;
+else if(element > node->element)
+{
+    node->right = insertNode(node->right, element);
+}
 
-	//Uppdatera höjden
-	node->height = 1 + max(height(node->left), height(node->right));
-	rightchild->height = 1 + max(height(rightchild->left), height(rightchild->right));
+else //elementet finns redan i trädet
+{
+    return node;
+}
 
-	//Returnerar den nya roten
-	return rightchild;
+//Uppdatera höjden på den här noden
+node->height = 1 + max(height(node->left), height(node->right));
+
+//Beräkna balansfaktorn för denna noden
+int balance = getBalance(node);
+
+//Om noden har en balansfaktor som inte är tillåten, balansera trädet
+if(balance > 1 && element < node->left->element)
+{
+    return rightRotate(node);
+}
+
+if(balance < -1 && element > node->right->element)
+{
+    return leftRotate(node);
+}
+
+if(balance > 1 && element < node->left->element)
+{
+    node->left = leftRotate(node->left);
+    return rightRotate(node);
+}
+
+if(balance < -1 && element > node->right->element)
+{
+    node->right = rightRotate(node->right);
+    return leftRotate(node);
+}
+
+//Returnerar oförändrad nod
+return node;
 }
 
 template<class T>
 typename AVL<T>::Node* AVL<T>::rightRotate(Node* node)
 {
 	Node* leftchild = node->left;
-	AVL<T>* rightgrandchild = leftchild->right;
+	Node* rightgrandchild = leftchild->right;
 
 	//Roteringssteg
 	leftchild->right = node;
@@ -158,6 +155,25 @@ typename AVL<T>::Node* AVL<T>::rightRotate(Node* node)
 	//Returnerar den nya roten
 	return leftchild;
 }
+
+template<class T>
+typename AVL<T>::Node* AVL<T>::leftRotate(Node* node)
+{
+	Node* rightchild = node->right;
+	Node* leftgrandchild = rightchild->left;
+
+	//Roteringssteg
+	rightchild->left = node;
+	node->right = leftgrandchild;
+
+	//Uppdatera höjden
+	node->height = 1 + max(height(node->right), height(node->left));
+	rightchild->height = 1 + max(height(rightchild->right), height(rightchild->left));
+
+	//Returnerar den nya roten
+	return rightchild;
+}
+
 
 template<class T>
 int AVL<T>::height(Node* node)
@@ -179,7 +195,8 @@ int AVL<T>::getBalance(Node* node)
 	return height(node->left) - height(node->right);
 }
 
-int max(int a, int b)
+template<class T>
+int AVL<T>::max(int a, int b)
 {
     return (a > b)? a : b;
 }
@@ -233,9 +250,9 @@ typename AVL<T>::Node* AVL<T>::removeHelper(Node* node, T element)
 		
 		else 
 		{
-            Node* temp = getMin(right);
-            node->element = temp->element;
-            node->right = removeHelper(right, temp->element);
+            int temp = getMin();
+            node->element = temp;
+            node->right = removeHelper(right, temp);
         }
     }
 
