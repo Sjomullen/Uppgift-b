@@ -29,11 +29,11 @@ public:
 	~AVL();
 	void insert(T element);
 	Node* insertNode(Node* node, T element);
-	void leftRotate(Node* target, Node* parent);
-	void rightRotate(Node* target, Node* parent);
+	void leftRotate(Node* node, Node* parent);
+	void rightRotate(Node* node, Node* parent);
     int height(Node* node);
     int getBalance(Node* node);
-	Node* removeHelper(Node* node, T element);
+	Node* removeHelper(Node* node, T element, bool& found);
 	void remove(T element);
 	int max(int a, int b);
 	bool find(T element);
@@ -206,15 +206,15 @@ return node;
 }
 
 template<class T>
-void AVL<T>::rightRotate(Node* target, Node* parent)
+void AVL<T>::rightRotate(Node* node, Node* parent)
 {
-	Node* localRoot = target->left;
-    target->left = localRoot->right;
-    localRoot->right = target;
+	Node* localRoot = node->left;
+    node->left = localRoot->right;
+    localRoot->right = node;
 
     if (parent != nullptr)
     {
-        if (parent->left == target)
+        if (parent->left == node)
             parent->left = localRoot;
         else
             parent->right = localRoot;
@@ -231,16 +231,16 @@ void AVL<T>::rightRotate(Node* target, Node* parent)
 }
 
 template<class T>
-void AVL<T>::leftRotate(Node* target, Node* parent)
+void AVL<T>::leftRotate(Node* node, Node* parent)
 {
-	Node* localRoot = target->right;
-    target->right = localRoot->left;
-    localRoot->left = target;
+	Node* localRoot = node->right;
+    node->right = localRoot->left;
+    localRoot->left = node;
 
     //Replace pointers of parent if it exists
     if (parent != nullptr)
     {
-        if (parent->right == target)
+        if (parent->right == node)
             parent->right = localRoot;
         else
             parent->left = localRoot;
@@ -282,100 +282,139 @@ int AVL<T>::max(int a, int b)
     return (a > b)? a : b;
 }
 
-//Function to delete an AVL_Node with the given key from the subtree
-template<class T> 
-typename AVL<T>::remove(T element)
+template<class T>
+void AVL<T>::remove(T element) 
 {
-	//Perform normal BST deletion
-	if (root == NULL)
-	{
-		return root;
-	}
-	//Find the node to be deleted
-	//Left Side
-	if(key < root->key)
-	{
-		root->left = remove(root->left, key);
+	Node *current = root;
+    Node *parent = nullptr;
 
-	//Right Side
-	}
-	else if(key > root->key)
-	{
-		root->right = remove(root->right, key);
-	}
-    //Root Node
-	else
-	{
-		// AVL_Node with only one child or no child
-		if((root->left == NULL) || (root->right == NULL))
+    while(current != nullptr)
+    {
+		if (element == current->element)
 		{
-			AVL_Node *temp = root->left ? root->left : root->right;
+			// Found the node to remove
+			if(current == root)
+			{
+				// If the root node is the one to remove, 
+				// replace it with its right subtree
+				Node *temp = root;
+				if(root->right == nullptr)
+				{
+					root = root->left;
+				}
+
+				else if(root->left == nullptr)
+				{
+					root = root->right;
+				}
+
+				else
+				{
+					root = root->right;
+					while(root->left != nullptr)
+					{
+						root = root->left;
+					}
+					root->left = temp->left;
+				}
+				delete temp;
+			}
+
+			else
+			{
+				// Otherwise, adjust parent's left or right 
+				// pointer to point to current's right subtree
+				if(parent->left == current)
+				{
+					Node *temp = current;
+					if(current->right == nullptr)
+					{
+						parent->left = current->left;
+					}
+
+					else if(current->left == nullptr)
+					{
+						parent->left = current->right;
+					}
+
+					else
+					{
+						parent->left = current->right;
+						while(parent->left->left != nullptr)
+						{
+							parent->left = parent->left->left;
+						}
+						parent->left->left = temp->left;
+					}
+					delete temp;
+				}
+				else
+				{
+					Node *temp = current;
+					if(current->right == nullptr)
+					{
+						parent->right = current->left;
+					}
+
+					else if(current->left == nullptr)
+					{
+							parent->right = current->right;
+					}
+
+					else
+					{
+						parent->right = current->right;
+						while(parent->right->left != nullptr)
+						{
+								parent->right = parent->right->left;
+						}
+						parent->right->left = temp->left;
+					}
+					delete temp;
+				}
+			}
+			return;
 		}
-			// No child case
-		if (temp == NULL)
+		else if(element < current->element)
 		{
-			temp = root;
-			root = NULL;
+			parent = current;
+			current = current->left;
 		}
-		
+
 		else
-		{ // One child case
-			*root = *temp; // Copy the contents of the non-empty child
-			free(temp);
-		}
-
-		else
 		{
-			// AVL_Node with two children: Get the inorder
-			// successor (smallest in the right subtree)
-			AVL_Node* temp = minValueAVL_Node(root->right);
-
-			// Copy the inorder successor's
-			// data to this AVL_Node
-			root->key = temp->key;
-			// Delete the inorder successor
-			root->right = remove(root->right,temp->key);
+			parent = current;
+			current = current->right;
 		}
 	}
 
-	// If the tree had only one AVL_Node then return
-	if(root == NULL)
-		return root;
-
-	//UPDATE HEIGHT OF THE CURRENT AVL_Node
-	root->height = 1 + max(height(root->left),height(root->right));
-
-	//GET THE BALANCE FACTOR OF THIS AVL_Node (to check whether this AVL_Node became unbalanced)
-	int balance = getBalance(root);
-
-	// If this AVL_Node becomes unbalanced, then there are 4 cases
-
-	// Left Left Case
-	if(balance > 1 && getBalance(root->left) >= 0)
+	int balance = getBalance(current);
+	if(balance == 2 && getBalance(current->left) >= 0)
 	{
-		return rightRotate(root);
-	}
-	// Left Right Case
-	if(balance > 1 && getBalance(root->left) < 0)
-	{
-		root->left = leftRotate(root->left);
-		return rightRotate(root);
+		return rightRotate(current);
 	}
 
-	// Right Right Case
-	if(balance < -1 && getBalance(root->right) <= 0)
+	else if(balance == 2 && getBalance(current->left) == -1)
 	{
-		return leftRotate(root);
-	}
-	// Right Left Case
-	if (balance < -1 && getBalance(root->right) > 0)
-	{
-		root->right = rightRotate(root->right);
-		return leftRotate(root);
+		current->left = leftRotate(current->left);
+		return rightRotate(current);
 	}
 
-	return root;
+	else if(balance == -2 && getBalance(current->right) <= -0)
+	{
+		return leftRotate(current);
+	}
+
+	else if(balance == -2 && getBalance(current->right) == 1)
+	{
+		current->right = rightRotate(current->right);
+        return leftRotate(current);
+	}
+
+
+	return current;
 }
+
 
 
 template <class T>
