@@ -29,8 +29,8 @@ public:
 	~AVL();
 	void insert(T element);
 	Node* insertNode(Node* node, T element);
-	Node* leftRotate(Node* node);
-	Node* rightRotate(Node* node);
+	void leftRotate(Node* target, Node* parent);
+	void rightRotate(Node* target, Node* parent);
     int height(Node* node);
     int getBalance(Node* node);
 	Node* removeHelper(Node* node, T element);
@@ -63,9 +63,9 @@ template <class T>
 AVL<T>::Node::Node(T element)
 {
 	this->element = element;
-		this->left = nullptr;
-		this->right = nullptr;
-		this->height = 0;
+	this->left = nullptr;
+	this->right = nullptr;
+	this->height = 0;
 }
 
 template <class T>
@@ -74,10 +74,81 @@ AVL<T>::Node::~Node()
 
 }
 
-template <class T>
+
+template <typename T>
 void AVL<T>::insert(T element)
 {
-	root = insertNode(root, element);
+    std::stack<Node*> nodes;
+
+    if (root == nullptr)
+    {
+        root = new Node(element);
+    }
+    else if (!find(element))
+    {
+        Node* current = root;
+        Node* parent = nullptr;
+
+        while (current != nullptr)
+        {
+            nodes.push(current);
+            parent = current;
+            if (element < current->element)
+            {
+                current = current->left;
+            }
+            else
+            {
+                current = current->right;
+            }
+        }
+
+        if (element < parent->element)
+        {
+            parent->left = new Node(element);
+        }
+        else
+        {
+            parent->right = new Node(element);
+        }
+
+        //Balancera trädet
+        while (!nodes.empty())
+		{
+			Node* rotationNode = nodes.top();
+            nodes.pop();
+
+			Node* rotationParent;
+			if (!nodes.empty())
+				rotationParent = nodes.top();
+			else
+				rotationParent = nullptr;
+
+			rotationNode->height = 1 + max(height(rotationNode->left), height(rotationNode->right));
+
+			//Beräkna balansfaktorn för denna noden
+			int balance = getBalance(rotationNode);
+
+			//Om noden har en balansfaktor som inte är tillåten, balansera trädet
+			if(balance > 1)
+			{
+				if(getBalance(rotationNode->left) < 0)
+				{
+					leftRotate(rotationNode->left, rotationNode);
+				}
+				rightRotate(rotationNode, rotationParent);
+			}
+
+			if(balance < -1)
+			{
+				if(getBalance(rotationNode->right) > 0)
+				{
+					rightRotate(rotationNode->right, rotationNode);
+				}
+				leftRotate(rotationNode, rotationParent);
+			}
+		}
+    }
 }
 
 template<class T>
@@ -112,26 +183,22 @@ node->height = 1 + max(height(node->left), height(node->right));
 int balance = getBalance(node);
 
 //Om noden har en balansfaktor som inte är tillåten, balansera trädet
-if(balance > 1 && element < node->left->element)
+if(balance > 1)
 {
-    return rightRotate(node);
+	if(getBalance(node->left) < 0)
+	{
+   		leftRotate(node->left->right, node->left);
+	}
+	rightRotate(node->left, node);
 }
 
-if(balance < -1 && element > node->right->element)
+if(balance < -1)
 {
-    return leftRotate(node);
-}
-
-if(balance > 1 && element < node->left->element)
-{
-    node->left = leftRotate(node->left);
-    return rightRotate(node);
-}
-
-if(balance < -1 && element > node->right->element)
-{
-    node->right = rightRotate(node->right);
-    return leftRotate(node);
+	if(getBalance(node->right) > 0)
+	{
+    	rightRotate(node->right->left, node->right);
+	}
+    leftRotate(node->right, node);
 }
 
 //Returnerar oförändrad nod
@@ -139,39 +206,53 @@ return node;
 }
 
 template<class T>
-typename AVL<T>::Node* AVL<T>::rightRotate(Node* node)
+void AVL<T>::rightRotate(Node* target, Node* parent)
 {
-	Node* leftchild = node->left;
-	Node* rightgrandchild = leftchild->right;
+	Node* localRoot = target->left;
+    target->left = localRoot->right;
+    localRoot->right = target;
 
-	//Roteringssteg
-	leftchild->right = node;
-	node->left = rightgrandchild;
+    if (parent != nullptr)
+    {
+        if (parent->left == target)
+            parent->left = localRoot;
+        else
+            parent->right = localRoot;
+    }
+    else
+        root = localRoot;
+
 
 	//Uppdatera höjden
-	node->height = 1 + max(height(node->left), height(node->right));
-	leftchild->height = 1 + max(height(leftchild->left), height(leftchild->right));
+	//target->height = 1 + max(height(node->right), height(node->left));
+	//localroot->height = 1 + max(height(rightchild->right), height(rightchild->left));
 
 	//Returnerar den nya roten
-	return leftchild;
 }
 
 template<class T>
-typename AVL<T>::Node* AVL<T>::leftRotate(Node* node)
+void AVL<T>::leftRotate(Node* target, Node* parent)
 {
-	Node* rightchild = node->right;
-	Node* leftgrandchild = rightchild->left;
+	Node* localRoot = target->right;
+    target->right = localRoot->left;
+    localRoot->left = target;
 
-	//Roteringssteg
-	rightchild->left = node;
-	node->right = leftgrandchild;
+    //Replace pointers of parent if it exists
+    if (parent != nullptr)
+    {
+        if (parent->right == target)
+            parent->right = localRoot;
+        else
+            parent->left = localRoot;
+    }
+    else
+        root = localRoot;
 
 	//Uppdatera höjden
-	node->height = 1 + max(height(node->right), height(node->left));
-	rightchild->height = 1 + max(height(rightchild->right), height(rightchild->left));
+	//node->height = 1 + max(height(node->right), height(node->left));
+	//target->height = 1 + max(height(rightchild->right), height(rightchild->left));
 
 	//Returnerar den nya roten
-	return rightchild;
 }
 
 
@@ -201,87 +282,101 @@ int AVL<T>::max(int a, int b)
     return (a > b)? a : b;
 }
 
-
-template <class T>
-void AVL<T>::remove(T element)
+//Function to delete an AVL_Node with the given key from the subtree
+template<class T> 
+typename AVL<T>::remove(T element)
 {
-    root = removeHelper(root, element);
+	//Perform normal BST deletion
+	if (root == NULL)
+	{
+		return root;
+	}
+	//Find the node to be deleted
+	//Left Side
+	if(key < root->key)
+	{
+		root->left = remove(root->left, key);
+
+	//Right Side
+	}
+	else if(key > root->key)
+	{
+		root->right = remove(root->right, key);
+	}
+    //Root Node
+	else
+	{
+		// AVL_Node with only one child or no child
+		if((root->left == NULL) || (root->right == NULL))
+		{
+			AVL_Node *temp = root->left ? root->left : root->right;
+		}
+			// No child case
+		if (temp == NULL)
+		{
+			temp = root;
+			root = NULL;
+		}
+		
+		else
+		{ // One child case
+			*root = *temp; // Copy the contents of the non-empty child
+			free(temp);
+		}
+
+		else
+		{
+			// AVL_Node with two children: Get the inorder
+			// successor (smallest in the right subtree)
+			AVL_Node* temp = minValueAVL_Node(root->right);
+
+			// Copy the inorder successor's
+			// data to this AVL_Node
+			root->key = temp->key;
+			// Delete the inorder successor
+			root->right = remove(root->right,temp->key);
+		}
+	}
+
+	// If the tree had only one AVL_Node then return
+	if(root == NULL)
+		return root;
+
+	//UPDATE HEIGHT OF THE CURRENT AVL_Node
+	root->height = 1 + max(height(root->left),height(root->right));
+
+	//GET THE BALANCE FACTOR OF THIS AVL_Node (to check whether this AVL_Node became unbalanced)
+	int balance = getBalance(root);
+
+	// If this AVL_Node becomes unbalanced, then there are 4 cases
+
+	// Left Left Case
+	if(balance > 1 && getBalance(root->left) >= 0)
+	{
+		return rightRotate(root);
+	}
+	// Left Right Case
+	if(balance > 1 && getBalance(root->left) < 0)
+	{
+		root->left = leftRotate(root->left);
+		return rightRotate(root);
+	}
+
+	// Right Right Case
+	if(balance < -1 && getBalance(root->right) <= 0)
+	{
+		return leftRotate(root);
+	}
+	// Right Left Case
+	if (balance < -1 && getBalance(root->right) > 0)
+	{
+		root->right = rightRotate(root->right);
+		return leftRotate(root);
+	}
+
+	return root;
 }
 
-template <class T>
-typename AVL<T>::Node* AVL<T>::removeHelper(Node* node, T element)
-{
-    if (node == nullptr) 
-	{
-        return nullptr;
-    }
-    
-    if (element < node->element) 
-	{
-        node->left = removeHelper(node->left, element);
-    } 
-	
-	else if (element > node->element) 
-	{
-        node->right = removeHelper(node->right, element);
-    } 
-	
-	else {
-        Node* left = node->left;
-        Node* right = node->right;
-
-        if (left == nullptr && right == nullptr) 
-		{
-            delete node;
-            return nullptr;
-        } 
-		
-		else if (left == nullptr) 
-		{
-            delete node;
-            return right;
-        } 
-		
-		else if (right == nullptr) 
-		{
-            delete node;
-            return left;
-        } 
-		
-		else 
-		{
-            int temp = getMin();
-            node->element = temp;
-            node->right = removeHelper(right, temp);
-        }
-    }
-
-    node->height = 1 + max(height(node->left), height(node->right));
-    int balance = getBalance(node);
-
-    if (balance > 1 && getBalance(node->left) >= 0) 
-	{
-        return rightRotate(node);
-    } 
-	
-	else if (balance > 1 && getBalance(node->left) < 0) 
-	{
-        node->left = leftRotate(node->left);
-        return rightRotate(node);
-    } 
-	else if (balance < -1 && getBalance(node->right) <= 0) 
-	{
-        return leftRotate(node);
-    } 
-	
-	else if (balance < -1 && getBalance(node->right) > 0) 
-	{
-        node->right = rightRotate(node->right);
-        return leftRotate(node);
-    }
-
-    return node;
-}
 
 template <class T>
 bool AVL<T>::find(T element)
